@@ -95,7 +95,7 @@
   .btn.primary:hover { filter: brightness(1.08); }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .btn:disabled:hover { border-color: var(--border); }
-  #fileInput { display: none; }
+  #fileInput, #mergeFileInput { display: none; }
 
   /* ---------------- Tab bar ---------------- */
   .tab-bar {
@@ -123,6 +123,9 @@
   }
   .tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
   .tab.active { color: var(--text); background: var(--bg); font-weight: 600; }
+  .tab.compare-tab:not(.active) { color: var(--accent); }
+  .tab.dragging { opacity: 0.4; }
+  .tab.drag-over { box-shadow: inset 0 2px 0 var(--accent); }
   .tab .dirty-dot { margin-left: 0.1rem; color: var(--accent); }
   .tab-badge {
     font-family: var(--mono);
@@ -180,6 +183,30 @@
   .cat-tabs button.active { background: var(--accent); color: #06131f; font-weight: 600; }
   .result-count { font-size: 0.74rem; color: var(--dim); white-space: nowrap; }
 
+  /* ---------------- STIG sub-tabs (multiple STIGs bundled in one checklist) ---------------- */
+  .stig-subtabs {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.9rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .stig-subtabs .label { color: var(--dim); font-size: 0.72rem; margin-right: 0.2rem; white-space: nowrap; }
+  .stig-pill {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--dim);
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.76rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .stig-pill:hover { border-color: var(--accent); color: var(--text); }
+  .stig-pill.active { background: var(--accent); border-color: var(--accent); color: #06131f; font-weight: 600; }
+
   /* ---------------- Bulk bar ---------------- */
   .bulk-bar {
     display: flex;
@@ -194,7 +221,7 @@
   .bulk-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .bulk-field-label { color: var(--dim); font-size: 0.76rem; white-space: nowrap; }
   .bulk-bar b { font-family: var(--mono); }
-  .bulk-bar select, .bulk-bar input[type=text] {
+  .bulk-bar select, .bulk-bar textarea {
     background: var(--panel2);
     border: 1px solid var(--border);
     color: var(--text);
@@ -202,7 +229,17 @@
     padding: 0.32rem 0.5rem;
     font-size: 0.78rem;
   }
-  .bulk-bar input[type=text] { flex: 1; min-width: 120px; max-width: 220px; }
+  .bulk-bar textarea {
+    flex: 1;
+    min-width: 120px;
+    max-width: 220px;
+    resize: vertical;
+    min-height: 1.9rem;
+    max-height: 8rem;
+    line-height: 1.35;
+    font-family: inherit;
+    white-space: pre-wrap;
+  }
 
   /* ---------------- Main body: 3 columns ---------------- */
   .main-body { flex: 1; display: flex; min-height: 0; }
@@ -228,9 +265,10 @@
     border-bottom: 1px solid rgba(255,255,255,0.03);
     border-left: 3px solid transparent;
   }
-  .rule-item:hover { background: rgba(255,255,255,0.03); }
+  .rule-item:nth-child(even) { background: rgba(255,255,255,0.025); }
+  .rule-item:hover { background: rgba(255,255,255,0.06); }
   .rule-item.active { background: rgba(74,158,218,0.14); border-left-color: var(--accent); }
-  .rule-item.multiselected:not(.active) { background: rgba(74,158,218,0.06); }
+  .rule-item.multiselected:not(.active) { background: rgba(74,158,218,0.1); }
   .rule-item .ri-icon { flex-shrink: 0; margin-top: 0.1rem; }
   .rule-item .ri-vid { font-weight: 700; font-size: 0.8rem; }
   .rule-item .ri-title {
@@ -245,7 +283,8 @@
   .rule-item .ri-asset { color: var(--accent); font-size: 0.68rem; margin-top: 0.15rem; }
   .rule-list-empty { padding: 1.2rem; color: var(--dim); font-size: 0.8rem; text-align: center; }
 
-  .detail-col { flex: 1; overflow-y: auto; padding: 1.4rem 2rem 2rem; min-width: 0; }
+  .detail-col { flex: 1; overflow-y: auto; padding: 1.4rem 2rem 2rem; min-width: 0; position: relative; }
+  .copy-to-others-btn { position: absolute; top: 1.3rem; right: 1.8rem; font-size: 0.74rem; padding: 0.32rem 0.65rem; }
   .detail-empty { color: var(--dim); font-size: 0.9rem; text-align: center; margin-top: 3rem; }
   .detail-header { text-align: center; margin-bottom: 1.2rem; }
   .detail-header h2 { margin: 0 0 0.2rem; font-size: 1.05rem; }
@@ -322,6 +361,112 @@
   }
   .bottom-col textarea:disabled { opacity: 0.5; }
 
+  /* ---------------- Modal (compare picker) ---------------- */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50;
+  }
+  .modal-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: min(520px, 92vw);
+    max-height: 82vh;
+    display: flex;
+    flex-direction: column;
+    padding: 1.2rem 1.3rem;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  .modal-card h2 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+  .modal-sub { color: var(--dim); font-size: 0.8rem; margin: 0 0 0.9rem; line-height: 1.5; }
+  .modal-list { overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .modal-list-item {
+    display: flex; align-items: flex-start; gap: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .modal-list-item:last-child { border-bottom: none; }
+  .modal-list-item:hover { background: rgba(255,255,255,0.03); }
+  .modal-list-item input { margin-top: 0.2rem; }
+  .modal-list-item .mli-name { font-size: 0.85rem; font-weight: 600; }
+  .modal-list-item .mli-sub { font-size: 0.74rem; color: var(--dim); margin-top: 0.1rem; }
+  .modal-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 1rem; }
+  .modal-count { font-size: 0.78rem; color: var(--dim); }
+  .modal-empty { padding: 1.2rem; color: var(--dim); font-size: 0.82rem; text-align: center; }
+  .copy-field-row {
+    display: flex; gap: 1.1rem; margin-bottom: 0.8rem; padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--border); font-size: 0.82rem;
+  }
+  .copy-field-row label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+  .copy-source-preview {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 7px;
+    padding: 0.6rem 0.7rem; font-size: 0.76rem; color: var(--dim); margin-bottom: 0.8rem; line-height: 1.5;
+  }
+  .copy-source-preview b { color: var(--text); }
+
+  /* ---------------- Compare view ---------------- */
+  .compare-col { flex: 1; overflow-y: auto; padding: 1.2rem 1.6rem 2rem; min-width: 0; }
+  .compare-header { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
+  .compare-header h2 { margin: 0; font-size: 1.05rem; }
+  .compare-toggle { display: flex; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .compare-toggle button { background: transparent; border: none; color: var(--dim); padding: 0.35rem 0.7rem; font-size: 0.76rem; cursor: pointer; border-right: 1px solid var(--border); }
+  .compare-toggle button:last-child { border-right: none; }
+  .compare-toggle button.active { background: var(--accent); color: #06131f; font-weight: 600; }
+  .export-theme-label { color: var(--dim); font-size: 0.76rem; white-space: nowrap; }
+  .compare-group { margin-bottom: 1.8rem; }
+  .compare-group h3 { font-size: 0.85rem; margin: 0 0 0.2rem; }
+  .compare-group .cg-sub { font-size: 0.76rem; color: var(--dim); margin-bottom: 0.6rem; }
+  .compare-group .cg-missing-note { font-size: 0.74rem; color: var(--open); margin-bottom: 0.6rem; }
+  table.compare-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  table.compare-table th {
+    position: sticky; top: 0; background: var(--panel); text-align: left; color: var(--dim);
+    font-weight: 600; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); z-index: 1;
+  }
+  table.compare-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.compare-table tr.diff-row { background: rgba(229,83,75,0.06); }
+  table.compare-table .ct-vid { font-family: var(--mono); color: var(--accent); white-space: nowrap; font-size: 0.78rem; }
+  table.compare-table .ct-title { max-width: 320px; }
+  table.compare-table .ct-status-cell { text-align: center; cursor: pointer; }
+  table.compare-table .ct-status-cell:hover { background: rgba(255,255,255,0.05); }
+  table.compare-table .ct-missing { color: var(--dim); font-size: 0.72rem; }
+  .compare-empty { color: var(--dim); font-size: 0.85rem; text-align: center; margin-top: 2.5rem; }
+
+  /* ---------------- Overview page ---------------- */
+  .overview-section { margin-bottom: 2rem; }
+  .overview-section h3 { font-size: 0.9rem; margin: 0 0 0.8rem; }
+  .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; margin-bottom: 1.8rem; }
+  .stat-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .stat-card .stat-num { font-size: 1.7rem; font-weight: 700; font-family: var(--mono); }
+  .stat-card .stat-label { font-size: 0.72rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.25rem; }
+  .overview-donut-row { display: flex; align-items: center; gap: 1.6rem; flex-wrap: wrap; }
+  .overview-donut-row .donut-legend { flex: 1; min-width: 220px; }
+  .sev-mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+  .sev-mini-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .sev-mini-label { font-weight: 700; font-size: 0.85rem; margin-top: 0.4rem; }
+  .sev-mini-sub { font-size: 0.72rem; color: var(--dim); margin-top: 0.2rem; }
+  .bar-chart { display: flex; flex-direction: column; gap: 0.5rem; }
+  .bar-row { display: flex; align-items: center; gap: 0.7rem; }
+  .bar-label { width: 160px; flex-shrink: 0; font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { flex: 1; background: var(--panel2); border-radius: 4px; height: 14px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--open); border-radius: 4px 0 0 4px; transition: width 0.2s; }
+  .bar-value { width: 2.2rem; flex-shrink: 0; text-align: right; font-size: 0.78rem; font-family: var(--mono); }
+
   /* ---------------- Empty state ---------------- */
   .empty-hint {
     margin: auto;
@@ -371,14 +516,26 @@
   <button class="autosave-toggle" id="autosaveToggle" title="">
     <span class="dot" id="autosaveDot"></span> Auto-save: <b id="autosaveState">On</b>
   </button>
+  <button class="btn" id="compareBtn" disabled>Compare</button>
+  <button class="btn" id="overviewBtn" disabled>Overview</button>
   <button class="btn primary" id="saveAllBtn" disabled>Save All</button>
 </div>
 
 <div class="tab-bar hidden" id="tabBar"></div>
 
+<div class="stig-subtabs hidden" id="stigSubTabs"></div>
+
 <div class="toolbar hidden" id="toolbar">
   <span class="toolbar-title">Checklist Rules</span>
-  <input type="search" id="searchInput" placeholder="Search Vuln IDs or title (comma/space = multiple)…">
+  <input type="search" id="searchInput" placeholder="Search (comma/space = multiple terms)…">
+  <select id="searchScope" title="Which fields the search box looks in">
+    <option value="all">All fields</option>
+    <option value="title">Vuln ID / Title</option>
+    <option value="check">Check Text</option>
+    <option value="fix">Fix Text</option>
+    <option value="discussion">Discussion</option>
+    <option value="notes">Comments / Finding Details</option>
+  </select>
   <select id="statusFilter">
     <option value="all">All statuses</option>
     <option value="not_reviewed">Not Reviewed</option>
@@ -392,6 +549,10 @@
     <button data-cat="medium">Cat II</button>
     <button data-cat="low">Cat III</button>
   </div>
+  <select id="sortBySelect" title="How rules are ordered in the list (only meaningful across multiple checklists)">
+    <option value="checklist">Group by checklist</option>
+    <option value="vid">Sort by Vuln ID</option>
+  </select>
   <div class="spacer"></div>
   <span class="result-count" id="resultCount"></span>
   <button class="btn" id="selectAllVisibleBtn">Select all</button>
@@ -411,16 +572,17 @@
       <option value="not_applicable">Not Applicable</option>
     </select>
     <button class="btn" id="bulkApplyStatusBtn">Apply</button>
+    <button class="btn" id="bulkCopyToOthersBtn" title="Copy each selected rule's status/comments/finding details to its match in other checklists">Copy to other checklists…</button>
     <div class="spacer"></div>
     <button class="btn" id="clearSelectionBtn">Clear selection</button>
   </div>
   <div class="bulk-row">
     <span class="bulk-field-label">Comments:</span>
-    <input type="text" id="bulkCommentsText" placeholder="Text…">
+    <textarea id="bulkCommentsText" placeholder="Text… (paste keeps line breaks)" rows="1"></textarea>
     <button class="btn" id="bulkCommentsAppendBtn" title="Add this text onto the end of the existing comments">Append</button>
     <button class="btn" id="bulkCommentsReplaceBtn" title="Overwrite the existing comments with this text">Replace</button>
     <span class="bulk-field-label">Finding Details:</span>
-    <input type="text" id="bulkFindingText" placeholder="Text…">
+    <textarea id="bulkFindingText" placeholder="Text… (paste keeps line breaks)" rows="1"></textarea>
     <button class="btn" id="bulkFindingAppendBtn" title="Add this text onto the end of the existing finding details">Append</button>
     <button class="btn" id="bulkFindingReplaceBtn" title="Overwrite the existing finding details with this text">Replace</button>
   </div>
@@ -444,6 +606,7 @@
   <div class="detail-col hidden" id="detailCol">
     <div class="detail-empty" id="detailEmpty">Select a rule from the list to view its details.</div>
     <div id="detailContent" class="hidden">
+      <button class="btn copy-to-others-btn" id="copyToOthersBtn" title="Copy this rule's status/comments/finding details to matching rules in other checklists">Copy to other checklists…</button>
       <div class="detail-header">
         <h2 id="dStigName"></h2>
         <div class="stig-version" id="dStigVersion"></div>
@@ -469,6 +632,10 @@
   </div>
 
   <div class="side-col hidden" id="sideCol"></div>
+
+  <div class="compare-col hidden" id="compareCol"></div>
+
+  <div class="compare-col hidden" id="overviewCol"></div>
 </div>
 
 <div class="bottom-bar hidden" id="bottomBar">
@@ -482,7 +649,74 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="compareModalOverlay">
+  <div class="modal-card">
+    <h2>Compare checklists</h2>
+    <p class="modal-sub">Pick two or more checklists to compare. Rules are matched by Vuln ID within STIGs that match by STIG ID/name across the checklists you pick.</p>
+    <div class="modal-list" id="compareModalList"></div>
+    <div class="modal-actions">
+      <span class="modal-count" id="compareModalCount"></span>
+      <div class="spacer"></div>
+      <button class="btn" id="compareModalCancelBtn">Cancel</button>
+      <button class="btn primary" id="compareModalConfirmBtn" disabled>Compare</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="overviewModalOverlay">
+  <div class="modal-card">
+    <h2>Build an overview</h2>
+    <p class="modal-sub">Pick the checklists to summarize — severity breakdowns, status donuts, an open-findings chart, and a per-checklist comparison table.</p>
+    <div class="modal-list" id="overviewModalList"></div>
+    <div class="modal-actions">
+      <span class="modal-count" id="overviewModalCount"></span>
+      <button class="btn" id="overviewModalSelectAllBtn" style="margin-left:0.6rem;">Select all</button>
+      <div class="spacer"></div>
+      <button class="btn" id="overviewModalCancelBtn">Cancel</button>
+      <button class="btn primary" id="overviewModalConfirmBtn" disabled>Build Overview</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="copyToOthersModalOverlay">
+  <div class="modal-card">
+    <h2>Copy to other checklists</h2>
+    <p class="modal-sub" id="copyToOthersSub"></p>
+    <div class="copy-field-row" id="copyFieldRow">
+      <label><input type="checkbox" id="copyFieldStatus" checked> Status</label>
+      <label><input type="checkbox" id="copyFieldComments" checked> Comments</label>
+      <label><input type="checkbox" id="copyFieldFinding" checked> Finding Details</label>
+    </div>
+    <div class="modal-list" id="copyToOthersList"></div>
+    <div class="modal-actions">
+      <span class="modal-count" id="copyToOthersCount"></span>
+      <button class="btn" id="copyToOthersSelectAllBtn" style="margin-left:0.6rem;">Select all</button>
+      <div class="spacer"></div>
+      <button class="btn" id="copyToOthersCancelBtn">Cancel</button>
+      <button class="btn primary" id="copyToOthersConfirmBtn" disabled>Copy</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="mergeImportModalOverlay">
+  <div class="modal-card">
+    <h2>Import findings into "<span id="mergeImportTargetName"></span>"</h2>
+    <p class="modal-sub" id="mergeImportSummary"></p>
+    <div class="copy-field-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
+      <label><input type="checkbox" id="mergeImportHostData" checked> Import target/host data (host name, IP, MAC, FQDN, etc.)</label>
+      <label><input type="checkbox" id="mergeImportSkipModified" checked> Skip rules that already have a status set (Open/Not a Finding/N-A) or have comments/finding details</label>
+    </div>
+    <div class="modal-actions">
+      <span class="modal-count" id="mergeImportCount"></span>
+      <div class="spacer"></div>
+      <button class="btn" id="mergeImportCancelBtn">Cancel</button>
+      <button class="btn primary" id="mergeImportConfirmBtn">Import Findings</button>
+    </div>
+  </div>
+</div>
+
 <input type="file" id="fileInput" accept=".cklb,.json,application/json" multiple>
+<input type="file" id="mergeFileInput" accept=".cklb,.json,application/json">
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
@@ -498,9 +732,29 @@
   let activeRuleKey = null;         // the one rule shown in the detail/side/bottom panels
   let selectionAnchorKey = null;    // shift-range anchor
   let focusedChecklistId = null;    // null = "All checklists" tab
-  let filters = { search: "", status: "all", category: "all" };
+  let focusedStigIdx = null;        // null = "All STIGs" within the focused checklist
+  let compareSessions = [];         // [{ id, checklistIds: [...] }]
+  let activeCompareId = null;       // set when a "Compare" tab is the active one
+  let compareShowMode = "diff";     // "diff" | "all" - which rows the compare view shows
+  let modalSelected = new Set();    // checklist ids picked in the compare-picker modal
+  let overviewSessions = [];        // [{ id, checklistIds: [...] }]
+  let activeOverviewId = null;      // set when an "Overview" tab is the active one
+  let overviewModalSelected = new Set(); // checklist ids picked in the overview-picker modal
+  let filters = { search: "", searchScope: "all", status: "all", category: "all", sortBy: "checklist" };
   let currentVisibleRows = [];      // the rule list's current filtered/ordered rows
   const SUPPORTS_FS_ACCESS = "showOpenFilePicker" in window;
+
+  // Remembers, per checklist, which STIG sub-tab you last had selected, and
+  // per (checklist + STIG) scope, which rule was last selected - so
+  // switching tabs/sub-tabs restores where you were instead of always
+  // jumping back to the top of the list.
+  const lastStigIdxByChecklist = new Map();  // checklistId -> stigIdx|null
+  const lastActiveKeyByScope = new Map();    // scopeKey -> ruleKey
+  function currentScopeKey() {
+    const c = focusedChecklistId === null ? "__all__" : focusedChecklistId;
+    const s = focusedStigIdx === null ? "__all__" : focusedStigIdx;
+    return `${c}::${s}`;
+  }
 
   // Auto-save: only meaningful for checklists with a real FileSystemFileHandle
   // (opened via the picker or drag-and-drop in Chrome/Edge) - there's no safe
@@ -722,8 +976,8 @@
     // Remember where this batch came from so the next picker opens there.
     if (handles && handles.length) saveLastHandle(handles[handles.length - 1]);
 
-    if (newlyLoadedIds.length === 1) focusedChecklistId = newlyLoadedIds[0];
-    else if (newlyLoadedIds.length > 1) focusedChecklistId = null;
+    if (newlyLoadedIds.length === 1) { focusedChecklistId = newlyLoadedIds[0]; focusedStigIdx = null; }
+    else if (newlyLoadedIds.length > 1) { focusedChecklistId = null; focusedStigIdx = null; }
     renderAll();
     if (loaded) toast(`Loaded ${loaded} checklist${loaded === 1 ? "" : "s"}.` + (failed ? ` ${failed} failed.` : ""));
 
@@ -772,8 +1026,156 @@
     if (SUPPORTS_FS_ACCESS) openPicker(); else $("fileInput").click();
   }
 
+  // The toolbar's Import button behaves contextually: with a specific
+  // checklist tab open, it merges an external file's findings INTO that
+  // checklist (like STIG Viewer's own Import); on "All checklists" (where
+  // there's no single checklist to merge into) it just loads new tabs.
+  function triggerImportOrMerge() {
+    if (focusedChecklistId) triggerMergeImport(focusedChecklistId);
+    else triggerLoad();
+  }
+
+  let pendingMergeTargetId = null;
+
+  async function triggerMergeImport(targetChecklistId) {
+    if (SUPPORTS_FS_ACCESS) {
+      try {
+        const handles = await window.showOpenFilePicker({ multiple: false, types: PICKER_TYPES, excludeAcceptAllOption: false, id: "stig-cklb-picker" });
+        const file = await handles[0].getFile();
+        await handleMergeImportFile(file, targetChecklistId);
+      } catch (e) {
+        if (e.name !== "AbortError") toast("Couldn't open file picker: " + e.message);
+      }
+    } else {
+      pendingMergeTargetId = targetChecklistId;
+      $("mergeFileInput").click();
+    }
+  }
+
+  $("mergeFileInput").addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    const targetId = pendingMergeTargetId;
+    pendingMergeTargetId = null;
+    if (file && targetId) await handleMergeImportFile(file, targetId);
+  });
+
+  async function handleMergeImportFile(file, targetChecklistId) {
+    const targetCl = checklists.find(c => c.id === targetChecklistId);
+    if (!targetCl) { toast("That checklist is no longer open."); return; }
+    let importedData;
+    try {
+      const text = await file.text();
+      importedData = JSON.parse(text);
+      const err = validateCklb(importedData);
+      if (err) throw new Error(err);
+    } catch (e) {
+      toast(`Couldn't read "${file.name}": ${e.message}`);
+      return;
+    }
+    openMergeImportModal(targetCl, importedData, file.name);
+  }
+
+  // Matches rules between the imported file and the currently open
+  // checklist by STIG identity (STIG ID/name) + Vuln ID, the same matching
+  // rule used everywhere else in this tool (Compare, Copy to other
+  // checklists, etc).
+  function computeImportMatches(importedData, targetCl) {
+    const matches = [];
+    (importedData.stigs || []).forEach(importedStig => {
+      const key = stigIdentityKey(importedStig);
+      (targetCl.data.stigs || []).forEach((targetStig, tsi) => {
+        if (stigIdentityKey(targetStig) !== key) return;
+        (importedStig.rules || []).forEach(importedRule => {
+          const gid = importedRule.group_id || importedRule.rule_id;
+          const tri = (targetStig.rules || []).findIndex(r => (r.group_id || r.rule_id) === gid);
+          if (tri === -1) return;
+          const targetRule = targetStig.rules[tri];
+          const alreadyModified = statusKind(targetRule.status) !== "not_reviewed"
+            || !!(targetRule.comments && targetRule.comments.trim())
+            || !!(targetRule.finding_details && targetRule.finding_details.trim());
+          matches.push({ importedRule, targetRule, alreadyModified });
+        });
+      });
+    });
+    return matches;
+  }
+
+  let mergeImportState = null; // { targetCl, importedData, importedFileName, matches }
+
+  function updateMergeImportSummary() {
+    if (!mergeImportState) return;
+    const skipModified = $("mergeImportSkipModified").checked;
+    const importHost = $("mergeImportHostData").checked;
+    const { matches } = mergeImportState;
+    const toUpdate = matches.filter(m => !skipModified || !m.alreadyModified);
+    const toSkip = matches.length - toUpdate.length;
+    let text = `${toUpdate.length} finding${toUpdate.length === 1 ? "" : "s"} will be updated`;
+    if (toSkip) text += `, ${toSkip} skipped (already modified)`;
+    $("mergeImportCount").textContent = text;
+    $("mergeImportConfirmBtn").disabled = toUpdate.length === 0 && !importHost;
+  }
+
+  function openMergeImportModal(targetCl, importedData, importedFileName) {
+    const matches = computeImportMatches(importedData, targetCl);
+    mergeImportState = { targetCl, importedData, importedFileName, matches };
+
+    $("mergeImportTargetName").textContent = targetCl.fileName;
+    const importedRuleCount = (importedData.stigs || []).reduce((n, s) => n + (s.rules || []).length, 0);
+    $("mergeImportSummary").textContent =
+      `"${importedFileName}" has ${importedRuleCount} rules across ${(importedData.stigs || []).length} STIG(s). `
+      + `${matches.length} of them match rules in this checklist (same STIG + Vuln ID) and can be imported.`;
+
+    $("mergeImportHostData").checked = true;
+    $("mergeImportSkipModified").checked = true;
+    updateMergeImportSummary();
+    $("mergeImportModalOverlay").classList.remove("hidden");
+  }
+  function closeMergeImportModal() {
+    $("mergeImportModalOverlay").classList.add("hidden");
+    mergeImportState = null;
+  }
+
+  $("mergeImportCancelBtn").addEventListener("click", closeMergeImportModal);
+  $("mergeImportModalOverlay").addEventListener("click", (e) => { if (e.target.id === "mergeImportModalOverlay") closeMergeImportModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("mergeImportModalOverlay").classList.contains("hidden")) closeMergeImportModal(); });
+  ["mergeImportHostData", "mergeImportSkipModified"].forEach(id => {
+    $(id).addEventListener("change", updateMergeImportSummary);
+  });
+  $("mergeImportConfirmBtn").addEventListener("click", () => {
+    if (!mergeImportState) return;
+    const { targetCl, importedData, matches, importedFileName } = mergeImportState;
+    const skipModified = $("mergeImportSkipModified").checked;
+    const importHost = $("mergeImportHostData").checked;
+
+    let updated = 0, skipped = 0;
+    matches.forEach(m => {
+      if (skipModified && m.alreadyModified) { skipped++; return; }
+      m.targetRule.status = m.importedRule.status;
+      m.targetRule.comments = m.importedRule.comments;
+      m.targetRule.finding_details = m.importedRule.finding_details;
+      updated++;
+    });
+
+    let hostUpdated = false;
+    if (importHost && importedData.target_data) {
+      targetCl.data.target_data = Object.assign({}, targetCl.data.target_data || {}, importedData.target_data);
+      hostUpdated = true;
+    }
+
+    if (updated > 0 || hostUpdated) targetCl.dirty = true;
+
+    closeMergeImportModal();
+    const parts = [`Imported ${updated} finding${updated === 1 ? "" : "s"} from "${importedFileName}" into ${targetCl.fileName}`];
+    if (skipped) parts.push(`${skipped} skipped (already modified)`);
+    if (hostUpdated) parts.push(`host data updated`);
+    toast(parts.join(" — ") + ".");
+    renderAll();
+    if (targetCl.dirty) scheduleAutosave(targetCl);
+  });
+
   $("dropzone").addEventListener("click", triggerLoad);
-  $("importBtn").addEventListener("click", triggerLoad);
+  $("importBtn").addEventListener("click", triggerImportOrMerge);
   $("fileInput").addEventListener("change", (e) => { loadFiles(e.target.files, null); e.target.value = ""; });
 
   async function handleDrop(e) {
@@ -824,22 +1226,40 @@
     return rows;
   }
 
+  function getSearchHay(rule, scope) {
+    switch (scope) {
+      case "title": return [rule.group_id, rule.rule_id, rule.rule_version, rule.rule_title].filter(Boolean).join(" ");
+      case "check": return rule.check_content || "";
+      case "fix": return rule.fix_text || "";
+      case "discussion": return getDiscussion(rule);
+      case "notes": return [rule.comments, rule.finding_details].filter(Boolean).join(" ");
+      default: // "all"
+        return [
+          rule.group_id, rule.rule_id, rule.rule_version, rule.rule_title,
+          getDiscussion(rule), rule.check_content, rule.fix_text, rule.comments, rule.finding_details
+        ].filter(Boolean).join(" ");
+    }
+  }
+
   function applyFilters(rows) {
-    // Multiple Vuln IDs / terms can be searched at once, separated by
-    // commas and/or whitespace (e.g. "V-220601, V-220609 V-220620") — a row
-    // matches if it matches ANY one of the terms.
+    // Multiple terms can be searched at once, separated by commas and/or
+    // whitespace (e.g. "V-220601, V-220609 V-220620") — a row matches if it
+    // matches ANY one of the terms, within whichever field(s) the search
+    // scope selector covers (title/IDs, check text, fix text, discussion,
+    // comments & finding details, or all of the above).
     const terms = filters.search.toLowerCase().split(/[,\s]+/).map(t => t.trim()).filter(Boolean);
     return rows.filter(r => {
       const rule = r.rule;
       if (focusedChecklistId) {
         if (r.checklist.id !== focusedChecklistId) return false;
+        if (focusedStigIdx !== null && r.stigIdx !== focusedStigIdx) return false;
       } else if (!r.checklist.included) {
         return false;
       }
       if (filters.status !== "all" && statusKind(rule.status) !== filters.status) return false;
       if (filters.category !== "all" && severityKind(rule.severity) !== filters.category) return false;
       if (terms.length) {
-        const hay = [rule.group_id, rule.rule_id, rule.rule_version, rule.rule_title].filter(Boolean).join(" ").toLowerCase();
+        const hay = getSearchHay(rule, filters.searchScope).toLowerCase();
         if (!terms.some(term => hay.includes(term))) return false;
       }
       return true;
@@ -861,19 +1281,40 @@
   // ===================================================================
   function renderAll() {
     const hasAny = checklists.length > 0;
+    const mode = !hasAny ? "empty" : (activeCompareId !== null ? "compare" : (activeOverviewId !== null ? "overview" : "normal"));
+    const special = mode === "compare" || mode === "overview"; // either full-width alt view
+
     $("emptyHint").classList.toggle("hidden", hasAny);
     $("tabBar").classList.toggle("hidden", !hasAny);
-    $("toolbar").classList.toggle("hidden", !hasAny);
-    $("ruleListColWrap").classList.toggle("hidden", !hasAny);
-    $("detailCol").classList.toggle("hidden", !hasAny);
-    $("sideCol").classList.toggle("hidden", !hasAny);
-    $("bottomBar").classList.toggle("hidden", !hasAny);
     $("saveAllBtn").disabled = !hasAny;
+    $("compareBtn").disabled = checklists.length < 2;
+    $("overviewBtn").disabled = checklists.length < 1;
+
+    // Compare/Overview replace the normal rule-list/detail/side/bottom
+    // layout entirely - they're full-width views, not another rule to browse.
+    $("toolbar").classList.toggle("hidden", !hasAny || special);
+    $("stigSubTabs").classList.toggle("hidden", mode !== "normal" || !focusedChecklistId);
+    $("sortBySelect").classList.toggle("hidden", mode !== "normal" || focusedChecklistId !== null);
+    $("ruleListColWrap").classList.toggle("hidden", mode !== "normal");
+    $("detailCol").classList.toggle("hidden", mode !== "normal");
+    $("sideCol").classList.toggle("hidden", mode !== "normal");
+    $("bottomBar").classList.toggle("hidden", mode !== "normal");
+    $("compareCol").classList.toggle("hidden", mode !== "compare");
+    $("overviewCol").classList.toggle("hidden", mode !== "overview");
 
     renderTabs();
-    renderRuleList();
-    renderDetail();
-    renderSidePanel();
+    if (mode === "compare") {
+      $("bulkBar").classList.add("hidden"); // selection/bulk actions don't apply to the compare/overview views
+      renderCompareView();
+    } else if (mode === "overview") {
+      $("bulkBar").classList.add("hidden");
+      renderOverviewView();
+    } else {
+      renderStigSubTabs();
+      renderRuleList(); // re-shows the bulk bar itself, based on current selection
+      renderDetail();
+      renderSidePanel();
+    }
     renderGlobalStats();
     renderSaveStatus();
   }
@@ -898,9 +1339,10 @@
 
     const allRows = getAllRows().filter(r => r.checklist.included);
     const allCounts = computeCounts(allRows);
+    const normalTabActive = activeCompareId === null && activeOverviewId === null;
 
     const tabsHtml = [`
-      <button class="tab ${focusedChecklistId === null ? "active" : ""}" data-tab="__all__">
+      <button class="tab ${normalTabActive && focusedChecklistId === null ? "active" : ""}" data-tab="__all__">
         All checklists
         ${allCounts.open ? `<span class="tab-badge tab-badge-open">${allCounts.open}</span>` : ""}
       </button>
@@ -912,7 +1354,7 @@
       const c = computeCounts(rows);
       const label = cl.fileName.replace(/\.cklb$/i, "");
       tabsHtml.push(`
-        <button class="tab ${focusedChecklistId === cl.id ? "active" : ""}" data-tab="${cl.id}" title="${escapeHtml(getAssetName(cl.data))}">
+        <button class="tab ${normalTabActive && focusedChecklistId === cl.id ? "active" : ""}" data-tab="${cl.id}" title="${escapeHtml(getAssetName(cl.data))}">
           ${escapeHtml(label)}${cl.dirty ? '<span class="dirty-dot" title="Unsaved changes">●</span>' : ""}
           ${c.open ? `<span class="tab-badge tab-badge-open">${c.open}</span>` : ""}
           <span class="tab-close" data-close="${cl.id}" title="Remove checklist">&times;</span>
@@ -920,13 +1362,60 @@
       `);
     });
 
-    bar.innerHTML = tabsHtml.join("") + `<button class="tab-add" id="tabAddBtn" title="Load more checklists">+</button>`;
+    const compareTabsHtml = compareSessions.map(s => {
+      const names = s.checklistIds.map(id => {
+        const c = checklists.find(cl => cl.id === id);
+        return c ? c.fileName.replace(/\.cklb$/i, "") : "(removed)";
+      });
+      return `
+        <button class="tab compare-tab ${activeCompareId === s.id ? "active" : ""}" data-compare-id="${s.id}" title="${escapeHtml(names.join(", "))}">
+          ⇄ Compare (${s.checklistIds.length})
+          <span class="tab-close" data-close-compare="${s.id}" title="Close comparison">&times;</span>
+        </button>
+      `;
+    }).join("");
+
+    const overviewTabsHtml = overviewSessions.map(s => {
+      const names = s.checklistIds.map(id => {
+        const c = checklists.find(cl => cl.id === id);
+        return c ? c.fileName.replace(/\.cklb$/i, "") : "(removed)";
+      });
+      return `
+        <button class="tab compare-tab ${activeOverviewId === s.id ? "active" : ""}" data-overview-id="${s.id}" title="${escapeHtml(names.join(", "))}">
+          ▤ Overview (${s.checklistIds.length})
+          <span class="tab-close" data-close-overview="${s.id}" title="Close overview">&times;</span>
+        </button>
+      `;
+    }).join("");
+
+    bar.innerHTML = tabsHtml.join("") + compareTabsHtml + overviewTabsHtml + `<button class="tab-add" id="tabAddBtn" title="Load more checklists">+</button>`;
 
     bar.querySelectorAll(".tab").forEach(btn => {
       btn.addEventListener("click", (e) => {
         if (e.target.classList.contains("tab-close")) return;
+        if (btn.dataset.compareId) {
+          activeCompareId = btn.dataset.compareId;
+          activeOverviewId = null;
+          focusedChecklistId = null;
+          focusedStigIdx = null;
+          selectedKeys.clear();
+          renderAll();
+          return;
+        }
+        if (btn.dataset.overviewId) {
+          activeOverviewId = btn.dataset.overviewId;
+          activeCompareId = null;
+          focusedChecklistId = null;
+          focusedStigIdx = null;
+          selectedKeys.clear();
+          renderAll();
+          return;
+        }
         const id = btn.dataset.tab;
+        activeCompareId = null;
+        activeOverviewId = null;
         focusedChecklistId = (id === "__all__") ? null : id;
+        focusedStigIdx = focusedChecklistId ? (lastStigIdxByChecklist.get(focusedChecklistId) ?? null) : null;
         selectedKeys.clear();
         renderAll();
       });
@@ -934,18 +1423,714 @@
     bar.querySelectorAll(".tab-close").forEach(x => {
       x.addEventListener("click", (e) => {
         e.stopPropagation();
+        if (x.dataset.closeCompare) {
+          const cid = x.dataset.closeCompare;
+          compareSessions = compareSessions.filter(s => s.id !== cid);
+          if (activeCompareId === cid) activeCompareId = null;
+          renderAll();
+          return;
+        }
+        if (x.dataset.closeOverview) {
+          const oid = x.dataset.closeOverview;
+          overviewSessions = overviewSessions.filter(s => s.id !== oid);
+          if (activeOverviewId === oid) activeOverviewId = null;
+          renderAll();
+          return;
+        }
         const id = x.dataset.close;
         const cl = checklists.find(c => c.id === id);
         if (!cl) return;
         if (cl.dirty && !confirm(`"${cl.fileName}" has unsaved changes. Remove it anyway?`)) return;
         checklists = checklists.filter(c => c.id !== id);
-        if (focusedChecklistId === id) focusedChecklistId = null;
+        if (focusedChecklistId === id) { focusedChecklistId = null; focusedStigIdx = null; }
         renderAll();
       });
     });
     const addBtn = $("tabAddBtn");
     if (addBtn) addBtn.addEventListener("click", triggerLoad);
+
+    attachTabDragHandlers(bar);
   }
+
+  // Lets checklist tabs be dragged to reorder them (and separately, compare
+  // tabs among themselves) - "All checklists" stays pinned first and never
+  // participates in reordering.
+  let dragState = null; // { type: "checklist" | "compare", id }
+
+  function tabType(btn) {
+    if (btn.dataset.compareId) return "compare";
+    if (btn.dataset.overviewId) return "overview";
+    return "checklist";
+  }
+  function tabId(btn, type) {
+    if (type === "compare") return btn.dataset.compareId;
+    if (type === "overview") return btn.dataset.overviewId;
+    return btn.dataset.tab;
+  }
+  function dragArrayFor(type) {
+    if (type === "compare") return compareSessions;
+    if (type === "overview") return overviewSessions;
+    return checklists;
+  }
+
+  function attachTabDragHandlers(bar) {
+    bar.querySelectorAll('.tab[data-tab]:not([data-tab="__all__"]), .tab[data-compare-id], .tab[data-overview-id]').forEach(btn => {
+      btn.draggable = true;
+      const type = tabType(btn);
+
+      btn.addEventListener("dragstart", (e) => {
+        dragState = { type, id: tabId(btn, type) };
+        btn.classList.add("dragging");
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+          try { e.dataTransfer.setData("text/plain", dragState.id); } catch (_) { /* some browsers require this call even if unused */ }
+        }
+      });
+      btn.addEventListener("dragend", () => {
+        btn.classList.remove("dragging");
+        bar.querySelectorAll(".tab.drag-over").forEach(t => t.classList.remove("drag-over"));
+        dragState = null;
+      });
+      btn.addEventListener("dragover", (e) => {
+        if (!dragState || dragState.type !== type) return;
+        e.preventDefault();
+        btn.classList.add("drag-over");
+      });
+      btn.addEventListener("dragleave", () => btn.classList.remove("drag-over"));
+      btn.addEventListener("drop", (e) => {
+        if (!dragState || dragState.type !== type) return;
+        e.preventDefault();
+        btn.classList.remove("drag-over");
+        const targetId = tabId(btn, type);
+        if (targetId === dragState.id) return;
+        const arr = dragArrayFor(type);
+        const fromIdx = arr.findIndex(item => item.id === dragState.id);
+        const toIdx = arr.findIndex(item => item.id === targetId);
+        if (fromIdx === -1 || toIdx === -1) return;
+        const [moved] = arr.splice(fromIdx, 1);
+        arr.splice(toIdx, 0, moved);
+        renderTabs();
+      });
+    });
+  }
+
+  // A checklist can bundle more than one STIG for the same asset (e.g. an OS
+  // STIG plus an application STIG reviewed together) - when that's the case,
+  // show a sub-tab row to switch between them, mirroring STIG Viewer 3.
+  function renderStigSubTabs() {
+    const wrap = $("stigSubTabs");
+    if (!focusedChecklistId) { wrap.classList.add("hidden"); wrap.innerHTML = ""; return; }
+    const cl = checklists.find(c => c.id === focusedChecklistId);
+    const stigs = cl ? (cl.data.stigs || []) : [];
+    if (stigs.length <= 1) { wrap.classList.add("hidden"); wrap.innerHTML = ""; return; }
+
+    wrap.classList.remove("hidden");
+    const pills = [`<span class="label">STIG:</span>`];
+    pills.push(`<button class="stig-pill ${focusedStigIdx === null ? "active" : ""}" data-stig="__all__">All STIGs</button>`);
+    stigs.forEach((stig, si) => {
+      const ruleCount = (stig.rules || []).length;
+      pills.push(`<button class="stig-pill ${focusedStigIdx === si ? "active" : ""}" data-stig="${si}">${escapeHtml(getStigName(stig))} <span style="opacity:0.7;">(${ruleCount})</span></button>`);
+    });
+    wrap.innerHTML = pills.join("");
+
+    wrap.querySelectorAll(".stig-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const v = btn.dataset.stig;
+        focusedStigIdx = (v === "__all__") ? null : parseInt(v, 10);
+        lastStigIdxByChecklist.set(focusedChecklistId, focusedStigIdx);
+        selectedKeys.clear();
+        renderAll();
+      });
+    });
+  }
+
+  // ===================================================================
+  // Compare view — pick 2+ checklists, see where their findings differ.
+  // Rules are matched by Vuln ID within STIGs matched by STIG ID/name
+  // across the picked checklists (a checklist can have more than one STIG,
+  // per the sub-tab feature above, so comparison happens per-STIG-group).
+  // ===================================================================
+  function stigIdentityKey(stig) {
+    return (stig.stig_id || stig.display_name || stig.stig_name || "unknown-stig").toLowerCase();
+  }
+
+  function getComparisonGroups(session) {
+    const cls = session.checklistIds.map(id => checklists.find(c => c.id === id)).filter(Boolean);
+    const stigGroups = new Map(); // identity key -> { label, perChecklist: Map(checklistId -> stigObj) }
+    cls.forEach(cl => {
+      (cl.data.stigs || []).forEach(stig => {
+        const key = stigIdentityKey(stig);
+        if (!stigGroups.has(key)) stigGroups.set(key, { label: getStigName(stig), perChecklist: new Map() });
+        stigGroups.get(key).perChecklist.set(cl.id, stig);
+      });
+    });
+    const comparable = [...stigGroups.values()].filter(g => g.perChecklist.size >= 2);
+    return { cls, groups: comparable };
+  }
+
+  function buildRuleRowsForGroup(group) {
+    const ruleMap = new Map(); // group_id -> { title, severity, perChecklist: Map(checklistId -> { rule, stigIdx }) }
+    group.perChecklist.forEach((stig, checklistId) => {
+      const cl = checklists.find(c => c.id === checklistId);
+      const stigIdx = cl ? (cl.data.stigs || []).indexOf(stig) : -1;
+      (stig.rules || []).forEach(rule => {
+        const gid = rule.group_id || rule.rule_id || `unlabeled-${Math.random()}`;
+        if (!ruleMap.has(gid)) ruleMap.set(gid, { title: rule.rule_title, severity: rule.severity, perChecklist: new Map() });
+        ruleMap.get(gid).perChecklist.set(checklistId, { rule, stigIdx });
+      });
+    });
+    return ruleMap;
+  }
+
+  function renderCompareView() {
+    const el = $("compareCol");
+    const session = compareSessions.find(s => s.id === activeCompareId);
+    if (!session) { el.innerHTML = `<div class="compare-empty">This comparison is no longer available.</div>`; return; }
+
+    const { cls, groups } = getComparisonGroups(session);
+    if (cls.length < 2) {
+      el.innerHTML = `<div class="compare-empty">This comparison needs at least 2 of its checklists to still be loaded.</div>`;
+      return;
+    }
+    if (!groups.length) {
+      el.innerHTML = `<div class="compare-empty">None of these checklists share a matching STIG (matched by STIG ID/name), so there's nothing to compare.</div>`;
+      return;
+    }
+
+    let html = `
+      <div class="compare-header">
+        <h2>Comparing ${cls.length} checklists</h2>
+        <div class="compare-toggle" id="compareModeToggle">
+          <button data-mode="diff" class="${compareShowMode === "diff" ? "active" : ""}">Differences only</button>
+          <button data-mode="all" class="${compareShowMode === "all" ? "active" : ""}">All rules</button>
+        </div>
+      </div>
+    `;
+
+    groups.forEach(group => {
+      const ruleMap = buildRuleRowsForGroup(group);
+      const clsInGroup = cls.filter(cl => group.perChecklist.has(cl.id));
+      const clsMissing = cls.filter(cl => !group.perChecklist.has(cl.id));
+
+      let rows = [...ruleMap.entries()].map(([gid, info]) => {
+        const cells = clsInGroup.map(cl => {
+          const entry = info.perChecklist.get(cl.id);
+          return { checklistId: cl.id, status: entry ? statusKind(entry.rule.status) : null, present: !!entry };
+        });
+        const presentStatuses = cells.filter(c => c.present).map(c => c.status);
+        const unanimous = new Set(presentStatuses).size <= 1;
+        const allPresent = cells.every(c => c.present);
+        return { gid, title: info.title, severity: info.severity, cells, flagged: !unanimous || !allPresent };
+      });
+      rows.sort((a, b) => (a.gid || "").localeCompare(b.gid || "", undefined, { numeric: true }));
+
+      const flaggedCount = rows.filter(r => r.flagged).length;
+      const visibleRows = compareShowMode === "diff" ? rows.filter(r => r.flagged) : rows;
+
+      html += `
+        <div class="compare-group">
+          <h3>${escapeHtml(group.label)}</h3>
+          <div class="cg-sub">${flaggedCount} of ${rows.length} rules differ across ${clsInGroup.length} checklist${clsInGroup.length === 1 ? "" : "s"} that include this STIG.</div>
+          ${clsMissing.length ? `<div class="cg-missing-note">This STIG isn't present in: ${clsMissing.map(c => escapeHtml(c.fileName)).join(", ")}</div>` : ""}
+          ${visibleRows.length ? `
+          <table class="compare-table">
+            <thead><tr>
+              <th>Vuln ID</th><th>Severity</th><th>Rule Title</th>
+              ${clsInGroup.map(cl => `<th>${escapeHtml(cl.fileName.replace(/\.cklb$/i, ""))}</th>`).join("")}
+            </tr></thead>
+            <tbody>
+              ${visibleRows.map(r => `
+                <tr class="${r.flagged ? "diff-row" : ""}">
+                  <td class="ct-vid">${escapeHtml(r.gid)}</td>
+                  <td><span class="sev-badge sev-${severityKind(r.severity)}">${severityLabel(r.severity)}</span></td>
+                  <td class="ct-title">${escapeHtml(r.title || "")}</td>
+                  ${r.cells.map(c => c.present
+                    ? `<td class="ct-status-cell" data-checklist="${c.checklistId}" data-gid="${escapeHtml(r.gid)}" title="Click to open this rule">${statusIconSvg(c.status, 20)}</td>`
+                    : `<td><span class="ct-missing">not present</span></td>`
+                  ).join("")}
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          ` : `<div style="color:var(--dim); font-size:0.8rem;">No ${compareShowMode === "diff" ? "differences" : "rules"} to show.</div>`}
+        </div>
+      `;
+    });
+
+    el.innerHTML = html;
+
+    const toggle = $("compareModeToggle");
+    if (toggle) toggle.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("click", () => { compareShowMode = btn.dataset.mode; renderCompareView(); });
+    });
+    el.querySelectorAll(".ct-status-cell[data-checklist]").forEach(td => {
+      td.addEventListener("click", () => jumpToRule(td.dataset.checklist, td.dataset.gid));
+    });
+  }
+
+  // Leaves the compare view and lands you on the exact rule, in its own
+  // checklist tab (and STIG sub-tab, if that checklist has more than one),
+  // so you can go fix whatever the comparison flagged.
+  function jumpToRule(checklistId, groupId) {
+    const row = getAllRows().find(r => r.checklist.id === checklistId && (r.rule.group_id || r.rule.rule_id) === groupId);
+    if (!row) { toast("Couldn't find that rule anymore."); return; }
+    activeCompareId = null;
+    focusedChecklistId = checklistId;
+    focusedStigIdx = row.stigIdx;
+    lastStigIdxByChecklist.set(checklistId, focusedStigIdx);
+    selectedKeys = new Set([row.key]);
+    selectionAnchorKey = row.key;
+    activeRuleKey = row.key;
+    lastActiveKeyByScope.set(currentScopeKey(), row.key);
+    renderAll();
+  }
+
+  // ---- Compare picker modal ----
+  function renderCompareModalList() {
+    const listEl = $("compareModalList");
+    listEl.innerHTML = checklists.map(cl => `
+      <label class="modal-list-item">
+        <input type="checkbox" data-id="${cl.id}" ${modalSelected.has(cl.id) ? "checked" : ""}>
+        <div>
+          <div class="mli-name">${escapeHtml(cl.fileName)}</div>
+          <div class="mli-sub">${escapeHtml(getAssetName(cl.data))}</div>
+        </div>
+      </label>
+    `).join("");
+    listEl.querySelectorAll("input[type=checkbox]").forEach(cb => {
+      cb.addEventListener("change", () => {
+        if (cb.checked) modalSelected.add(cb.dataset.id); else modalSelected.delete(cb.dataset.id);
+        updateCompareModalState();
+      });
+    });
+    updateCompareModalState();
+  }
+  function updateCompareModalState() {
+    $("compareModalCount").textContent = `${modalSelected.size} selected`;
+    $("compareModalConfirmBtn").disabled = modalSelected.size < 2;
+  }
+  function openCompareModal() {
+    modalSelected = new Set();
+    renderCompareModalList();
+    $("compareModalOverlay").classList.remove("hidden");
+  }
+  function closeCompareModal() {
+    $("compareModalOverlay").classList.add("hidden");
+  }
+
+  $("compareBtn").addEventListener("click", openCompareModal);
+  $("compareModalCancelBtn").addEventListener("click", closeCompareModal);
+  $("compareModalOverlay").addEventListener("click", (e) => { if (e.target.id === "compareModalOverlay") closeCompareModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("compareModalOverlay").classList.contains("hidden")) closeCompareModal(); });
+
+  // Up/Down arrow keys step through the currently visible rule list, same
+  // ordering as whatever's on screen (respects the sort/filter in effect).
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    const tag = document.activeElement ? document.activeElement.tagName : "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return; // don't hijack typing or dropdown navigation
+    if (activeCompareId !== null) return; // no rule list to step through in the compare view
+    if (!$("compareModalOverlay").classList.contains("hidden")) return;
+    if (!currentVisibleRows.length) return;
+
+    e.preventDefault();
+    const idx = currentVisibleRows.findIndex(r => r.key === activeRuleKey);
+    let nextIdx;
+    if (idx === -1) nextIdx = 0;
+    else nextIdx = e.key === "ArrowDown" ? Math.min(idx + 1, currentVisibleRows.length - 1) : Math.max(idx - 1, 0);
+    const nextKey = currentVisibleRows[nextIdx].key;
+    if (nextKey === activeRuleKey) return;
+
+    selectedKeys = new Set([nextKey]);
+    selectionAnchorKey = nextKey;
+    activeRuleKey = nextKey;
+    lastActiveKeyByScope.set(currentScopeKey(), nextKey);
+    renderRuleList();
+    renderDetail();
+    renderSidePanel();
+
+    const el = document.querySelector(`.rule-item[data-key="${nextKey}"]`);
+    if (el) el.scrollIntoView({ block: "nearest" });
+  });
+  $("compareModalConfirmBtn").addEventListener("click", () => {
+    if (modalSelected.size < 2) return;
+    const session = { id: newId(), checklistIds: [...modalSelected] };
+    compareSessions.push(session);
+    activeCompareId = session.id;
+    activeOverviewId = null;
+    focusedChecklistId = null;
+    focusedStigIdx = null;
+    selectedKeys.clear();
+    closeCompareModal();
+    renderAll();
+  });
+
+  // ===================================================================
+  // Overview — pick 1+ checklists, see aggregate severity/status stats,
+  // an open-findings chart, and a per-checklist comparison table.
+  // ===================================================================
+  function computeOverviewData(session) {
+    const cls = session.checklistIds.map(id => checklists.find(c => c.id === id)).filter(Boolean);
+
+    const instanceRows = [];
+    cls.forEach(cl => (cl.data.stigs || []).forEach(stig => (stig.rules || []).forEach(rule => {
+      instanceRows.push({ cl, rule });
+    })));
+
+    const uniqueVidMap = new Map(); // group_id -> severity kind (first seen)
+    instanceRows.forEach(r => {
+      const gid = r.rule.group_id || r.rule.rule_id;
+      if (gid && !uniqueVidMap.has(gid)) uniqueVidMap.set(gid, severityKind(r.rule.severity));
+    });
+    const uniqueSeverityCounts = { high: 0, medium: 0, low: 0 };
+    uniqueVidMap.forEach(sev => { if (uniqueSeverityCounts[sev] !== undefined) uniqueSeverityCounts[sev]++; });
+
+    const overallStatusCounts = computeCounts(instanceRows.map(r => ({ rule: r.rule })));
+
+    const bySeverityRows = { high: [], medium: [], low: [] };
+    instanceRows.forEach(r => {
+      const k = severityKind(r.rule.severity);
+      if (bySeverityRows[k]) bySeverityRows[k].push({ rule: r.rule });
+    });
+    const perSeverityCounts = {
+      high: computeCounts(bySeverityRows.high),
+      medium: computeCounts(bySeverityRows.medium),
+      low: computeCounts(bySeverityRows.low)
+    };
+
+    const perChecklist = cls.map(cl => {
+      const rows = [];
+      (cl.data.stigs || []).forEach(stig => (stig.rules || []).forEach(rule => rows.push({ rule })));
+      const counts = computeCounts(rows);
+      const score = counts.total ? Math.round(((counts.not_a_finding + counts.not_applicable) / counts.total) * 100) : 0;
+      return { cl, counts, score };
+    });
+
+    const stigCoverageMap = new Map(); // identity key -> { label, checklistIds: Set }
+    cls.forEach(cl => (cl.data.stigs || []).forEach(stig => {
+      const key = stigIdentityKey(stig);
+      if (!stigCoverageMap.has(key)) stigCoverageMap.set(key, { label: getStigName(stig), checklistIds: new Set() });
+      stigCoverageMap.get(key).checklistIds.add(cl.id);
+    }));
+
+    return {
+      cls,
+      totalInstances: instanceRows.length,
+      uniqueVidCount: uniqueVidMap.size,
+      uniqueSeverityCounts,
+      overallStatusCounts,
+      perSeverityCounts,
+      perChecklist,
+      stigCoverage: [...stigCoverageMap.values()]
+    };
+  }
+
+  let overviewExportTheme = "light"; // "light" | "dark" - which palette exports use
+
+  function renderOverviewView() {
+    const el = $("overviewCol");
+    const session = overviewSessions.find(s => s.id === activeOverviewId);
+    if (!session) { el.innerHTML = `<div class="compare-empty">This overview is no longer available.</div>`; return; }
+
+    const data = computeOverviewData(session);
+    if (!data.cls.length) {
+      el.innerHTML = `<div class="compare-empty">None of this overview's checklists are still loaded.</div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="compare-header">
+        <h2>Overview of ${data.cls.length} checklist${data.cls.length === 1 ? "" : "s"}</h2>
+        <div class="spacer"></div>
+        <span class="export-theme-label">Export theme:</span>
+        <div class="cat-tabs" id="overviewExportThemeTabs">
+          <button data-theme="light" class="${overviewExportTheme === "light" ? "active" : ""}">Light</button>
+          <button data-theme="dark" class="${overviewExportTheme === "dark" ? "active" : ""}">Dark</button>
+        </div>
+        <button class="btn" id="overviewExportHtmlBtn">Export as HTML</button>
+        <button class="btn" id="overviewExportPdfBtn">Export as PDF</button>
+      </div>
+      ${buildOverviewContentHtml(data)}
+    `;
+
+    $("overviewExportThemeTabs").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-theme]");
+      if (!btn) return;
+      overviewExportTheme = btn.dataset.theme;
+      $("overviewExportThemeTabs").querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
+    });
+    $("overviewExportHtmlBtn").addEventListener("click", () => downloadOverviewAsHtml(data, overviewExportTheme));
+    $("overviewExportPdfBtn").addEventListener("click", () => exportOverviewAsPdf(data, overviewExportTheme));
+  }
+
+  // Builds just the report body (stat cards, donuts, charts, tables) as an
+  // HTML string - shared by the live in-app view and both export paths, so
+  // there's only one place that actually defines what the overview shows.
+  function buildOverviewContentHtml(data) {
+    const overallScore = data.overallStatusCounts.total
+      ? Math.round(((data.overallStatusCounts.not_a_finding + data.overallStatusCounts.not_applicable) / data.overallStatusCounts.total) * 100)
+      : 0;
+
+    const maxOpen = Math.max(1, ...data.perChecklist.map(p => p.counts.open));
+    const sortedByOpen = [...data.perChecklist].sort((a, b) => b.counts.open - a.counts.open);
+
+    const SEV_ORDER = [["high", "CAT I"], ["medium", "CAT II"], ["low", "CAT III"]];
+
+    return `
+      <div class="stat-cards">
+        <div class="stat-card"><div class="stat-num">${data.cls.length}</div><div class="stat-label">Checklists</div></div>
+        <div class="stat-card"><div class="stat-num">${data.totalInstances}</div><div class="stat-label">Total Rule Findings</div></div>
+        <div class="stat-card"><div class="stat-num">${data.uniqueVidCount}</div><div class="stat-label">Unique Vuln IDs</div></div>
+        <div class="stat-card"><div class="stat-num">${overallScore}%</div><div class="stat-label">Overall Score</div></div>
+      </div>
+
+      <div class="overview-section">
+        <h3>Findings by Status — all checklists combined</h3>
+        <div class="overview-donut-row">
+          <div class="donut-wrap">${donutSvg(data.overallStatusCounts, 160)}</div>
+          <div class="donut-legend">
+            <div class="leg-item"><span class="swatch" style="background:var(--na)"></span>Not Reviewed <span class="leg-n">${data.overallStatusCounts.not_reviewed}</span></div>
+            <div class="leg-item"><span class="swatch" style="background:var(--ok)"></span>Not a Finding <span class="leg-n">${data.overallStatusCounts.not_a_finding}</span></div>
+            <div class="leg-item"><span class="swatch" style="background:#4a5a6a"></span>Not Applicable <span class="leg-n">${data.overallStatusCounts.not_applicable}</span></div>
+            <div class="leg-item"><span class="swatch" style="background:var(--open)"></span>Open <span class="leg-n">${data.overallStatusCounts.open}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overview-section">
+        <h3>Unique Vuln IDs by Severity</h3>
+        <div class="sev-mini-grid">
+          ${SEV_ORDER.map(([k, label]) => `
+            <div class="sev-mini-card">
+              <div class="donut-wrap">${donutSvg(data.perSeverityCounts[k], 110)}</div>
+              <div class="sev-mini-label">${label}</div>
+              <div class="sev-mini-sub">${data.uniqueSeverityCounts[k]} unique Vuln ID${data.uniqueSeverityCounts[k] === 1 ? "" : "s"} · ${data.perSeverityCounts[k].total} total finding${data.perSeverityCounts[k].total === 1 ? "" : "s"}</div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+
+      <div class="overview-section">
+        <h3>Open Findings by Checklist</h3>
+        <div class="bar-chart">
+          ${sortedByOpen.map(pc => `
+            <div class="bar-row">
+              <div class="bar-label" title="${escapeHtml(pc.cl.fileName)}">${escapeHtml(pc.cl.fileName.replace(/\.cklb$/i, ""))}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${Math.round((pc.counts.open / maxOpen) * 100)}%"></div></div>
+              <div class="bar-value">${pc.counts.open}</div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+
+      <div class="overview-section">
+        <h3>Per-Checklist Breakdown</h3>
+        <table class="compare-table">
+          <thead><tr><th>Checklist</th><th>Asset</th><th>Total</th><th>Open</th><th>Not a Finding</th><th>Not Reviewed</th><th>N/A</th><th>Score</th></tr></thead>
+          <tbody>
+            ${data.perChecklist.map(pc => `
+              <tr>
+                <td>${escapeHtml(pc.cl.fileName)}</td>
+                <td>${escapeHtml(getAssetName(pc.cl.data))}</td>
+                <td>${pc.counts.total}</td>
+                <td style="color:var(--open); font-weight:700;">${pc.counts.open}</td>
+                <td style="color:var(--ok);">${pc.counts.not_a_finding}</td>
+                <td style="color:var(--accent);">${pc.counts.not_reviewed}</td>
+                <td style="color:var(--na);">${pc.counts.not_applicable}</td>
+                <td>${pc.score}%</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="overview-section">
+        <h3>STIG Coverage</h3>
+        <table class="compare-table">
+          <thead><tr><th>STIG</th><th># of Checklists</th></tr></thead>
+          <tbody>
+            ${data.stigCoverage.map(s => `<tr><td>${escapeHtml(s.label)}</td><td>${s.checklistIds.size} of ${data.cls.length}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // A light, print-friendly theme for exports - the app's own dark theme
+  // reads fine on screen but wastes ink/toner and looks poor on paper, so
+  // exports get their own palette rather than reusing the app's stylesheet.
+  const EXPORT_PALETTES = {
+    light: {
+      bg: "#ffffff", panel: "#f7f8fa", panel2: "#eef0f3", border: "#d7dbe0",
+      text: "#1b222b", dim: "#6b7684", accent: "#1d6fa5", ok: "#1f8a3b", open: "#c93a32", na: "#7c8794",
+      naSwatch: "#4a5a6a"
+    },
+    dark: {
+      // Matches the app's own dark theme, for anyone who wants the export
+      // to look like what they were looking at on screen.
+      bg: "#14181f", panel: "#1b212a", panel2: "#10141a", border: "#2a323d",
+      text: "#d6dde5", dim: "#8894a3", accent: "#4a9eda", ok: "#3fb950", open: "#e5534b", na: "#9aa4b2",
+      naSwatch: "#4a5a6a"
+    }
+  };
+
+  function buildOverviewExportDocument(data, theme) {
+    const p = EXPORT_PALETTES[theme] || EXPORT_PALETTES.light;
+    const generatedAt = new Date().toLocaleString();
+    const sourceFiles = data.cls.map(cl => cl.fileName).join(", ");
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>STIG Checklist Overview</title>
+<style>
+  :root {
+    --bg: ${p.bg}; --panel: ${p.panel}; --panel2: ${p.panel2}; --border: ${p.border};
+    --text: ${p.text}; --dim: ${p.dim}; --accent: ${p.accent}; --ok: ${p.ok}; --open: ${p.open}; --na: ${p.na};
+    --mono: "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); font-size: 13px; }
+  /* The browser's own print margin is always left unfilled (white), no
+     matter what color the page itself is - so the actual background fill
+     has to live on this wrapper instead, sized to at least one full page,
+     with @page's margin zeroed out below so there's no unfillable border. */
+  .page-wrap { background: var(--bg); padding: 0.6in 0.65in; min-height: 100vh; }
+  .report-header { border-bottom: 2px solid var(--accent); padding-bottom: 0.9rem; margin-bottom: 1.8rem; }
+  h1 { font-size: 1.55rem; margin: 0 0 0.3rem; letter-spacing: -0.01em; }
+  .export-meta { color: var(--dim); font-size: 0.8rem; }
+  h3 { font-size: 0.92rem; margin: 0 0 0.9rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .overview-section { margin-bottom: 2.2rem; }
+  .stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; margin-bottom: 1.8rem; }
+  .stat-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; }
+  .stat-card .stat-num { font-size: 1.7rem; font-weight: 700; font-family: var(--mono); }
+  .stat-card .stat-label { font-size: 0.72rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.25rem; }
+  .overview-donut-row { display: flex; align-items: center; gap: 1.6rem; flex-wrap: wrap; }
+  .donut-wrap { display: flex; justify-content: center; margin-bottom: 0.5rem; }
+  .donut-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 0.8rem; font-size: 0.82rem; flex: 1; min-width: 220px; }
+  .leg-item { display: flex; align-items: center; gap: 0.4rem; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; display: inline-block; }
+  .leg-n { font-family: var(--mono); font-weight: 700; }
+  .sev-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .sev-mini-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; }
+  .sev-mini-label { font-weight: 700; font-size: 0.92rem; margin-top: 0.4rem; }
+  .sev-mini-sub { font-size: 0.78rem; color: var(--dim); margin-top: 0.2rem; }
+  .bar-chart { display: flex; flex-direction: column; gap: 0.5rem; }
+  .bar-row { display: flex; align-items: center; gap: 0.7rem; }
+  .bar-label { width: 170px; flex-shrink: 0; font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { flex: 1; background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; height: 14px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--open); }
+  .bar-value { width: 2.4rem; flex-shrink: 0; text-align: right; font-size: 0.82rem; font-family: var(--mono); }
+  table.compare-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  table.compare-table th {
+    text-align: left; color: var(--dim); font-weight: 600; font-size: 0.7rem;
+    text-transform: uppercase; letter-spacing: 0.04em; padding: 0.5rem 0.6rem; border-bottom: 2px solid var(--border);
+  }
+  table.compare-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); }
+
+  @media print {
+    @page { margin: 0; }
+    /* Without color-adjust, browsers strip background colors by default
+       when printing - which would silently turn a dark export back into a
+       (broken-looking, edge-unfilled) light one on paper/PDF. */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    body { font-size: 12pt; }
+    .page-wrap { min-height: 100vh; }
+    .report-header, .overview-section, .stat-card, .sev-mini-card, table.compare-table tr {
+      break-inside: avoid;
+    }
+    h3 { break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="report-header">
+      <h1>STIG Checklist Overview</h1>
+      <div class="export-meta">Generated ${escapeHtml(generatedAt)} · Source checklists: ${escapeHtml(sourceFiles)}</div>
+    </div>
+    ${buildOverviewContentHtml(data)}
+  </div>
+</body>
+</html>`;
+  }
+
+  function downloadOverviewAsHtml(data, theme) {
+    const docStr = buildOverviewExportDocument(data, theme);
+    const blob = new Blob([docStr], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `stig-overview-${Date.now()}.html`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(`Downloaded ${a.download}.`);
+  }
+
+  function exportOverviewAsPdf(data, theme) {
+    const docStr = buildOverviewExportDocument(data, theme);
+    const win = window.open("", "_blank");
+    if (!win) { toast("Couldn't open a new window for printing - check your browser's popup blocker."); return; }
+    win.document.open();
+    win.document.write(docStr);
+    win.document.close();
+    // Give the new window a beat to finish laying out (including the inline
+    // SVG donuts) before invoking print, or some browsers print a blank page.
+    setTimeout(() => { win.focus(); win.print(); }, 300);
+  }
+
+  function renderOverviewModalList() {
+    const listEl = $("overviewModalList");
+    listEl.innerHTML = checklists.map(cl => `
+      <label class="modal-list-item">
+        <input type="checkbox" data-id="${cl.id}" ${overviewModalSelected.has(cl.id) ? "checked" : ""}>
+        <div>
+          <div class="mli-name">${escapeHtml(cl.fileName)}</div>
+          <div class="mli-sub">${escapeHtml(getAssetName(cl.data))}</div>
+        </div>
+      </label>
+    `).join("");
+    listEl.querySelectorAll("input[type=checkbox]").forEach(cb => {
+      cb.addEventListener("change", () => {
+        if (cb.checked) overviewModalSelected.add(cb.dataset.id); else overviewModalSelected.delete(cb.dataset.id);
+        updateOverviewModalState();
+      });
+    });
+    updateOverviewModalState();
+  }
+  function updateOverviewModalState() {
+    $("overviewModalCount").textContent = `${overviewModalSelected.size} selected`;
+    $("overviewModalConfirmBtn").disabled = overviewModalSelected.size < 1;
+  }
+  function openOverviewModal() {
+    overviewModalSelected = new Set();
+    renderOverviewModalList();
+    $("overviewModalOverlay").classList.remove("hidden");
+  }
+  function closeOverviewModal() {
+    $("overviewModalOverlay").classList.add("hidden");
+  }
+
+  $("overviewBtn").addEventListener("click", openOverviewModal);
+  $("overviewModalCancelBtn").addEventListener("click", closeOverviewModal);
+  $("overviewModalOverlay").addEventListener("click", (e) => { if (e.target.id === "overviewModalOverlay") closeOverviewModal(); });
+  $("overviewModalSelectAllBtn").addEventListener("click", () => {
+    overviewModalSelected = new Set(checklists.map(c => c.id));
+    renderOverviewModalList();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("overviewModalOverlay").classList.contains("hidden")) closeOverviewModal(); });
+  $("overviewModalConfirmBtn").addEventListener("click", () => {
+    if (overviewModalSelected.size < 1) return;
+    const session = { id: newId(), checklistIds: [...overviewModalSelected] };
+    overviewSessions.push(session);
+    activeOverviewId = session.id;
+    activeCompareId = null;
+    focusedChecklistId = null;
+    focusedStigIdx = null;
+    selectedKeys.clear();
+    closeOverviewModal();
+    renderAll();
+  });
 
   // ===================================================================
   // Rule list (left column)
@@ -954,16 +2139,34 @@
     const listEl = $("ruleList");
     const allRows = getAllRows();
     const visible = applyFilters(allRows);
+
+    // Default order is however getAllRows() produced it (grouped by
+    // checklist). Sorting by Vuln ID instead clusters the same rule from
+    // every checklist together, so you can compare them side by side.
+    if (filters.sortBy === "vid" && focusedChecklistId === null) {
+      visible.sort((a, b) => {
+        const av = a.rule.group_id || a.rule.rule_id || "";
+        const bv = b.rule.group_id || b.rule.rule_id || "";
+        const cmp = av.localeCompare(bv, undefined, { numeric: true });
+        if (cmp !== 0) return cmp;
+        return getAssetName(a.checklist.data).localeCompare(getAssetName(b.checklist.data));
+      });
+    }
     currentVisibleRows = visible;
 
     $("resultCount").textContent = `${visible.length} of ${allRows.length} rules`;
     $("ruleListCount").textContent = visible.length;
 
-    // Keep the active rule valid for whatever's currently visible; default
-    // to the first visible row, like STIG Viewer selecting the top rule.
+    // Keep the active rule valid for whatever's currently visible. Prefer
+    // whatever rule was last selected in THIS scope (checklist + STIG
+    // sub-tab combo) over just jumping back to the top of the list.
     if (!visible.some(r => r.key === activeRuleKey)) {
-      activeRuleKey = visible.length ? visible[0].key : null;
+      const remembered = lastActiveKeyByScope.get(currentScopeKey());
+      activeRuleKey = (remembered && visible.some(r => r.key === remembered))
+        ? remembered
+        : (visible.length ? visible[0].key : null);
     }
+    lastActiveKeyByScope.set(currentScopeKey(), activeRuleKey);
 
     if (!visible.length) {
       listEl.innerHTML = `<div class="rule-list-empty">No rules match the current filters.</div>`;
@@ -978,13 +2181,21 @@
       const cls = ["rule-item"];
       if (r.key === activeRuleKey) cls.push("active");
       if (selectedKeys.has(r.key) && r.key !== activeRuleKey) cls.push("multiselected");
+      const checklistHasMultipleStigs = (r.checklist.data.stigs || []).length > 1;
+      let tagLine = "";
+      if (showAsset) {
+        const asset = getAssetName(r.checklist.data);
+        tagLine = checklistHasMultipleStigs ? `${asset} · ${getStigName(r.stig)}` : asset;
+      } else if (checklistHasMultipleStigs && focusedStigIdx === null) {
+        tagLine = getStigName(r.stig);
+      }
       return `
         <div class="${cls.join(" ")}" data-key="${r.key}">
           <button class="status-icon-btn" data-key="${r.key}" title="${STATUS_LABEL[sk]} — click to change">${statusIconSvg(sk, 20)}</button>
           <div style="min-width:0; flex:1;">
             <div class="ri-vid">${escapeHtml(rule.group_id || rule.rule_id || "")}</div>
             <div class="ri-title">${escapeHtml(rule.rule_title || "")}</div>
-            ${showAsset ? `<div class="ri-asset">${escapeHtml(getAssetName(r.checklist.data))}</div>` : ""}
+            ${tagLine ? `<div class="ri-asset">${escapeHtml(tagLine)}</div>` : ""}
           </div>
         </div>
       `;
@@ -1078,6 +2289,15 @@
 
   const BULK_FIELD_LABEL = { comments: "comments", finding_details: "finding details" };
 
+  function joinPreservingFormatting(existing, addition) {
+    if (!existing) return addition;
+    // A plain " | " reads fine for short single-line notes, but looks wrong
+    // glued onto multi-line pasted text - use a blank line between them
+    // instead whenever either side actually has line breaks.
+    const sep = (existing.includes("\n") || addition.includes("\n")) ? "\n\n" : " | ";
+    return existing + sep + addition;
+  }
+
   function applyBulkText(field, textInputId, mode) {
     const text = $(textInputId).value;
     const label = BULK_FIELD_LABEL[field] || field;
@@ -1094,7 +2314,7 @@
       const row = findRowByKey(key);
       if (!row) return;
       if (mode === "append") {
-        row.rule[field] = row.rule[field] ? row.rule[field] + " | " + text : text;
+        row.rule[field] = joinPreservingFormatting(row.rule[field], text);
       } else {
         row.rule[field] = text;
       }
@@ -1123,6 +2343,7 @@
     searchDebounce = setTimeout(() => { filters.search = e.target.value; renderRuleList(); }, 120);
   });
   $("statusFilter").addEventListener("change", (e) => { filters.status = e.target.value; renderRuleList(); });
+  $("searchScope").addEventListener("change", (e) => { filters.searchScope = e.target.value; renderRuleList(); });
   $("catTabs").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-cat]");
     if (!btn) return;
@@ -1130,6 +2351,7 @@
     $("catTabs").querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
     renderRuleList();
   });
+  $("sortBySelect").addEventListener("change", (e) => { filters.sortBy = e.target.value; renderRuleList(); });
 
   // ===================================================================
   // Detail pane (center column) — always visible, no drawer/popup.
@@ -1207,6 +2429,163 @@
   });
 
   // ===================================================================
+  // Copy to other checklists — take one or more selected rules' status/
+  // comments/finding details and stamp them onto the matching rule (same
+  // STIG identity + same Vuln ID) in other loaded checklists. Works from a
+  // single rule (the detail-pane button) or a multi-selection (the bulk bar).
+  // ===================================================================
+  let copySourceRows = [];              // the rule(s) being copied FROM
+  let copyToOthersSelected = new Set(); // target checklist ids
+  let copyToOthersGroups = [];          // [{ checklist, pairs: [{ sourceRow, targetRow }] }]
+
+  function computeCopyPairs(sourceRows) {
+    const allRows = getAllRows();
+    const pairs = [];
+    sourceRows.forEach(sourceRow => {
+      const gid = sourceRow.rule.group_id || sourceRow.rule.rule_id;
+      const srcKey = stigIdentityKey(sourceRow.stig);
+      const seenChecklists = new Set();
+      allRows.forEach(r => {
+        if (r.checklist.id === sourceRow.checklist.id) return;
+        if (seenChecklists.has(r.checklist.id)) return; // one match per checklist per source rule
+        if (stigIdentityKey(r.stig) !== srcKey) return;
+        const rgid = r.rule.group_id || r.rule.rule_id;
+        if (rgid !== gid) return;
+        seenChecklists.add(r.checklist.id);
+        pairs.push({ sourceRow, targetRow: r });
+      });
+    });
+    return pairs;
+  }
+
+  function groupCopyPairsByChecklist(pairs) {
+    const map = new Map(); // checklistId -> { checklist, pairs: [] }
+    pairs.forEach(p => {
+      const cid = p.targetRow.checklist.id;
+      if (!map.has(cid)) map.set(cid, { checklist: p.targetRow.checklist, pairs: [] });
+      map.get(cid).pairs.push(p);
+    });
+    return [...map.values()];
+  }
+
+  function renderCopyToOthersModalList() {
+    const listEl = $("copyToOthersList");
+    if (!copyToOthersGroups.length) {
+      listEl.innerHTML = `<div class="modal-empty">No other loaded checklists contain ${copySourceRows.length === 1 ? "this Vuln ID" : "any of these Vuln IDs"} under a matching STIG.</div>`;
+      $("copyToOthersSelectAllBtn").disabled = true;
+    } else {
+      $("copyToOthersSelectAllBtn").disabled = false;
+      listEl.innerHTML = copyToOthersGroups.map(g => {
+        const sub = copySourceRows.length === 1
+          ? `${escapeHtml(getAssetName(g.checklist.data))} · currently ${STATUS_LABEL[statusKind(g.pairs[0].targetRow.rule.status)]}`
+          : `${escapeHtml(getAssetName(g.checklist.data))} · matches ${g.pairs.length} of ${copySourceRows.length} selected rules`;
+        return `
+          <label class="modal-list-item">
+            <input type="checkbox" data-id="${g.checklist.id}" ${copyToOthersSelected.has(g.checklist.id) ? "checked" : ""}>
+            <div>
+              <div class="mli-name">${escapeHtml(g.checklist.fileName)}</div>
+              <div class="mli-sub">${sub}</div>
+            </div>
+          </label>
+        `;
+      }).join("");
+      listEl.querySelectorAll("input[type=checkbox]").forEach(cb => {
+        cb.addEventListener("change", () => {
+          if (cb.checked) copyToOthersSelected.add(cb.dataset.id); else copyToOthersSelected.delete(cb.dataset.id);
+          updateCopyToOthersModalState();
+        });
+      });
+    }
+    updateCopyToOthersModalState();
+  }
+  function updateCopyToOthersModalState() {
+    $("copyToOthersCount").textContent = `${copyToOthersSelected.size} selected`;
+    const anyField = $("copyFieldStatus").checked || $("copyFieldComments").checked || $("copyFieldFinding").checked;
+    $("copyToOthersConfirmBtn").disabled = copyToOthersSelected.size < 1 || !anyField;
+  }
+
+  function openCopyToOthersModal(sourceRows) {
+    if (!sourceRows || !sourceRows.length) return;
+    copySourceRows = sourceRows;
+    copyToOthersGroups = groupCopyPairsByChecklist(computeCopyPairs(sourceRows));
+    copyToOthersSelected = new Set();
+
+    let previewEl = document.getElementById("copySourcePreview");
+    if (!previewEl) {
+      previewEl = document.createElement("div");
+      previewEl.id = "copySourcePreview";
+      previewEl.className = "copy-source-preview";
+      $("copyFieldRow").insertAdjacentElement("afterend", previewEl);
+    }
+
+    if (sourceRows.length === 1) {
+      const rule = sourceRows[0].rule;
+      $("copyToOthersSub").textContent = `Copying ${rule.group_id || rule.rule_id || "this rule"} — ${rule.rule_title || ""}`;
+      const commentsPreview = (rule.comments || "").slice(0, 80) || "(empty)";
+      const findingPreview = (rule.finding_details || "").slice(0, 80) || "(empty)";
+      previewEl.innerHTML = `
+        Source (<b>${escapeHtml(getAssetName(sourceRows[0].checklist.data))}</b>): status <b>${STATUS_LABEL[statusKind(rule.status)]}</b><br>
+        Comments: ${escapeHtml(commentsPreview)}<br>
+        Finding Details: ${escapeHtml(findingPreview)}
+      `;
+    } else {
+      const vids = sourceRows.map(r => r.rule.group_id || r.rule.rule_id).filter(Boolean);
+      $("copyToOthersSub").textContent = `Copying ${sourceRows.length} selected rules to their matches in other checklists.`;
+      previewEl.innerHTML = `Selected rules: <b>${escapeHtml(vids.join(", "))}</b><br>Each rule's own status/comments/finding details will be copied to its match in whichever checklists you pick below.`;
+    }
+
+    renderCopyToOthersModalList();
+    $("copyToOthersModalOverlay").classList.remove("hidden");
+  }
+  function closeCopyToOthersModal() {
+    $("copyToOthersModalOverlay").classList.add("hidden");
+  }
+
+  $("copyToOthersBtn").addEventListener("click", () => {
+    const sourceRow = activeRuleKey ? findRowByKey(activeRuleKey) : null;
+    if (sourceRow) openCopyToOthersModal([sourceRow]);
+  });
+  $("bulkCopyToOthersBtn").addEventListener("click", () => {
+    const rows = [...selectedKeys].map(findRowByKey).filter(Boolean);
+    if (rows.length) openCopyToOthersModal(rows);
+  });
+  $("copyToOthersCancelBtn").addEventListener("click", closeCopyToOthersModal);
+  $("copyToOthersModalOverlay").addEventListener("click", (e) => { if (e.target.id === "copyToOthersModalOverlay") closeCopyToOthersModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("copyToOthersModalOverlay").classList.contains("hidden")) closeCopyToOthersModal(); });
+  $("copyToOthersSelectAllBtn").addEventListener("click", () => {
+    copyToOthersSelected = new Set(copyToOthersGroups.map(g => g.checklist.id));
+    renderCopyToOthersModalList();
+  });
+  ["copyFieldStatus", "copyFieldComments", "copyFieldFinding"].forEach(id => {
+    $(id).addEventListener("change", updateCopyToOthersModalState);
+  });
+  $("copyToOthersConfirmBtn").addEventListener("click", () => {
+    if (copyToOthersSelected.size < 1) return;
+    const copyStatus = $("copyFieldStatus").checked;
+    const copyComments = $("copyFieldComments").checked;
+    const copyFinding = $("copyFieldFinding").checked;
+
+    let n = 0;
+    const touched = new Set();
+    copyToOthersGroups.forEach(g => {
+      if (!copyToOthersSelected.has(g.checklist.id)) return;
+      g.pairs.forEach(({ sourceRow, targetRow }) => {
+        if (copyStatus) targetRow.rule.status = sourceRow.rule.status;
+        if (copyComments) targetRow.rule.comments = sourceRow.rule.comments;
+        if (copyFinding) targetRow.rule.finding_details = sourceRow.rule.finding_details;
+        n++;
+      });
+      g.checklist.dirty = true;
+      touched.add(g.checklist);
+    });
+
+    closeCopyToOthersModal();
+    toast(`Copied ${n} finding${n === 1 ? "" : "s"} across ${touched.size} checklist${touched.size === 1 ? "" : "s"}.`);
+    renderAll();
+    touched.forEach(scheduleAutosave);
+  });
+
+  // ===================================================================
   // Side panel (right column) — status donut + score + target data.
   // For the "All checklists" tab there's no single target to edit, so it
   // shows the combined donut/score only.
@@ -1253,7 +2632,10 @@
     if (focusedChecklistId) {
       cl = checklists.find(c => c.id === focusedChecklistId);
       rows = [];
-      if (cl) (cl.data.stigs || []).forEach(stig => (stig.rules || []).forEach(rule => rows.push({ rule })));
+      if (cl) (cl.data.stigs || []).forEach((stig, si) => {
+        if (focusedStigIdx !== null && si !== focusedStigIdx) return;
+        (stig.rules || []).forEach(rule => rows.push({ rule }));
+      });
     } else {
       rows = getAllRows().filter(r => r.checklist.included);
     }
