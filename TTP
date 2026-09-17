@@ -1,0 +1,42 @@
+Subject: New tool: STIG Multi-Checklist Editor — what it does better than STIG Viewer
+
+Team,
+
+I've been building an offline, single-file HTML tool for working with multiple .cklb checklists at once, styled after STIG Viewer 3 but with a bunch of things STIG Viewer either can't do or makes painful. Wanted to give you a rundown before we start using it.
+
+No install needed — it's one HTML file, runs entirely in your browser, nothing leaves your machine, no server or account required. Open it, drop in your .cklb files, done.
+
+WORKING ACROSS MULTIPLE CHECKLISTS AT ONCE
+- Every checklist opens in its own tab, plus an "All checklists" tab that aggregates everything — no more opening one .cklb at a time.
+- Compare tab: line up the same STIG across several devices/checklists side by side and see exactly which rules differ, with a toggle to show only the differences.
+- Fill Checklists: fill out one checklist as a "master" and push its answers into every other checklist that shares the same Vuln IDs — huge time-saver when the same STIG applies to a fleet of identical systems. Can also spin up a blank checklist from an existing one's structure to use as that master.
+- Copy to other checklists: copy one rule's (or a whole selection's) status/comments/finding details over to its matching rule in any other open checklist.
+
+OVERVIEW / REPORTING
+- Overview tab aggregates stats across any set of checklists: overall status donut, CAT I/II/III severity breakdowns, an "Open Findings by STIG" drill-down (STIG → open Vuln ID → which devices have it open → their comments/finding details), a per-checklist score table, and STIG coverage.
+- New: Total/Open tables per unique Vuln ID, broken out by CAT I, CAT II, and CAT III — so you can see, e.g., "8 unique CAT I checks, 4 of them open somewhere" at a glance instead of digging through each device.
+- Overview exports to a print-ready HTML or PDF report (light or dark theme) — a real report, not just a screenshot.
+- New: "Export Findings (CSV)" — a flattened, one-row-per-finding spreadsheet (STIG, Vuln ID, severity, status, comments, finding details, classification, CCIs, severity override info) for feeding into a POA&M, tracker, or eMASS upload. STIG Viewer doesn't give you anything like this without third-party tools.
+
+SEARCH AND BULK EDITING
+- Real search syntax: commas/spaces = OR, quotes = exact phrase, capitalized AND to require both, scoped to specific fields (title, check text, fix text, discussion, comments) or all of them, with matches highlighted right in the list.
+- Multi-select rules (shift/ctrl-click) and bulk-set status, or bulk append/replace comments and finding details across many rules at once — instead of clicking into each one.
+- Hover a row and hit N/O/X/R to set its status without even clicking into it; works on a whole multi-selection at once too.
+
+SEVERITY OVERRIDE AND CLASSIFICATION
+- Severity Override with required justification, same as STIG Viewer — except here the override actually takes effect everywhere severity matters (CAT filter tabs, Overview stats, Compare), not just as a label on one screen.
+- Classification marking (None/Unclassified/CUI/FOUO) settable independently on Target Data, Comments, and Finding Details, plus a one-click "Apply to All Checks" button that stamps the same marking across every check in a checklist plus its Target Data in one shot — instead of setting it rule by rule.
+
+IMPORT
+- Import a .cklb's findings into an already-open checklist (matched by STIG + Vuln ID), with a "skip already-modified rules" safeguard.
+- New: Import XCCDF/SCC scan results (.xml) directly — it maps automated pass/fail/N/A results onto the matching Vuln IDs, pulls host data (hostname, IP, MAC, role) into Target Data, and deliberately leaves manual/OCIL questions alone for us to review by hand rather than guessing at them.
+
+QUALITY OF LIFE
+- Autosave straight back to the original file (Chrome/Edge, via the File System Access API) — no repeated export/re-import cycle.
+- Duplicate-file detection when loading, so you can't accidentally open the same checklist twice.
+- "Export Tool + Checklists" — hand someone a single self-contained file with checklists already loaded in it, optionally locked read-only, so they don't need to import anything themselves.
+- Role and Technology Area fields are now proper dropdowns matching STIG Viewer's actual option lists, instead of free text.
+
+Happy to walk anyone through it or take requests for anything else that'd help our workflow.
+
+[Attach or link the tool here]
