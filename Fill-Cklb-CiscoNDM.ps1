@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>CKLB Auto-Fill — Cisco IOS Switch NDM</title>
+<title>CKLB Auto-Fill</title>
 <style>
   :root {
     --bg: #0d1117;
